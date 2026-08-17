@@ -570,6 +570,38 @@
       color: var(--primary);
     }
   </style>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      onAuthStateChanged,
+      signOut,
+      updateProfile
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBdadEbV5RnKUwRgLzrMbQZi3mn1pWo3Ds",
+      authDomain: "creatorhub-ai-57579.firebaseapp.com",
+      projectId: "creatorhub-ai-57579",
+      storageBucket: "creatorhub-ai-57579.firebasestorage.app",
+      messagingSenderId: "536770487850",
+      appId: "1:536770487850:web:ca6078043540ef6d834553"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Expose to global scope so regular <script> below can use them
+    window.firebaseAuth = auth;
+    window.firebaseCreateUser = createUserWithEmailAndPassword;
+    window.firebaseSignIn = signInWithEmailAndPassword;
+    window.firebaseOnAuthStateChanged = onAuthStateChanged;
+    window.firebaseSignOut = signOut;
+    window.firebaseUpdateProfile = updateProfile;
+  </script>
 </head>
 <body>
   <div class="header">
@@ -772,20 +804,28 @@
   </div>
 
   <script>
-    // ==================== AUTHENTICATION ====================
+    // ==================== AUTHENTICATION (Firebase) ====================
 
+    let currentFirebaseUser = null;
+
+    // Wait for Firebase to be ready, then watch login state
     window.addEventListener('DOMContentLoaded', () => {
-      checkAuthStatus();
+      // small delay to make sure the module script above has run
+      const waitForAuth = setInterval(() => {
+        if (window.firebaseAuth) {
+          clearInterval(waitForAuth);
+          window.firebaseOnAuthStateChanged(window.firebaseAuth, (user) => {
+            if (user) {
+              currentFirebaseUser = user;
+              showUserNav(user);
+            } else {
+              currentFirebaseUser = null;
+              showAuthNav();
+            }
+          });
+        }
+      }, 100);
     });
-
-    function checkAuthStatus() {
-      const user = localStorage.getItem('currentUser');
-      if (user) {
-        showUserNav(JSON.parse(user));
-      } else {
-        showAuthNav();
-      }
-    }
 
     function openLoginModal() {
       document.getElementById('loginModal').classList.add('active');
@@ -834,35 +874,28 @@
       }
     }
 
-    function handleLogin(event) {
+    async function handleLogin(event) {
       event.preventDefault();
 
       const email = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
       const errorDiv = document.getElementById('login-error');
+      errorDiv.style.display = 'none';
 
-      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
-      const user = allUsers.find(u => u.email === email && u.password === password);
-
-      if (!user) {
-        errorDiv.textContent = '❌ Invalid email or password';
+      try {
+        await window.firebaseSignIn(window.firebaseAuth, email, password);
+        closeLoginModal();
+      } catch (error) {
+        let message = 'Login failed. Please try again.';
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+          message = 'Invalid email or password';
+        }
+        errorDiv.textContent = '❌ ' + message;
         errorDiv.style.display = 'block';
-        return;
       }
-
-      const userData = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt
-      };
-
-      localStorage.setItem('currentUser', JSON.stringify(userData));
-      closeLoginModal();
-      showUserNav(userData);
     }
 
-    function handleSignup(event) {
+    async function handleSignup(event) {
       event.preventDefault();
 
       const name = document.getElementById('signup-name').value;
@@ -887,42 +920,35 @@
         return;
       }
 
-      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
-      if (allUsers.find(u => u.email === email)) {
-        errorDiv.textContent = '❌ Email already registered';
+      try {
+        const userCredential = await window.firebaseCreateUser(window.firebaseAuth, email, password);
+        await window.firebaseUpdateProfile(userCredential.user, { displayName: name });
+
+        successDiv.textContent = '✅ Account created successfully! Logging you in...';
+        successDiv.style.display = 'block';
+
+        setTimeout(() => {
+          closeSignupModal();
+        }, 1500);
+      } catch (error) {
+        let message = 'Signup failed. Please try again.';
+        if (error.code === 'auth/email-already-in-use') {
+          message = 'Email already registered';
+        } else if (error.code === 'auth/invalid-email') {
+          message = 'Invalid email address';
+        } else if (error.code === 'auth/weak-password') {
+          message = 'Password is too weak';
+        }
+        errorDiv.textContent = '❌ ' + message;
         errorDiv.style.display = 'block';
-        return;
       }
-
-      const newUser = {
-        id: Date.now().toString(),
-        name: name,
-        email: email,
-        password: password, // Note: for a real production app, hash this on a real backend/DB
-        createdAt: new Date().toISOString()
-      };
-
-      allUsers.push(newUser);
-      localStorage.setItem('allUsers', JSON.stringify(allUsers));
-
-      successDiv.textContent = '✅ Account created successfully! You can now login.';
-      successDiv.style.display = 'block';
-
-      document.getElementById('signup-name').value = '';
-      document.getElementById('signup-email').value = '';
-      document.getElementById('signup-password').value = '';
-      document.getElementById('signup-confirm').value = '';
-
-      setTimeout(() => {
-        closeSignupModal();
-        openLoginModal();
-      }, 2000);
     }
 
-    function showUserNav(userData) {
+    function showUserNav(user) {
       document.getElementById('auth-nav').style.display = 'none';
       document.getElementById('user-nav').style.display = 'flex';
-      document.getElementById('display-name').textContent = userData.name.split(' ')[0];
+      const displayName = user.displayName || user.email.split('@')[0];
+      document.getElementById('display-name').textContent = displayName.split(' ')[0];
     }
 
     function showAuthNav() {
@@ -930,15 +956,14 @@
       document.getElementById('user-nav').style.display = 'none';
     }
 
-    function logout() {
-      localStorage.removeItem('currentUser');
-      showAuthNav();
+    async function logout() {
+      await window.firebaseSignOut(window.firebaseAuth);
       alert('✅ Logged out successfully!');
     }
 
     // ==================== PLATFORM LOGIC ====================
     function switchTab(tabName) {
-      const user = localStorage.getItem('currentUser');
+      const user = currentFirebaseUser;
       if (!user) {
         alert('Please login to use this feature');
         openLoginModal();
@@ -971,7 +996,7 @@
 
     // Generate Viral Ideas
     async function generateIdeas() {
-      const user = localStorage.getItem('currentUser');
+      const user = currentFirebaseUser;
       if (!user) {
         alert('Please login to use this feature');
         openLoginModal();
@@ -1034,7 +1059,7 @@ Format as JSON with array of objects with keys: hook, type, reason. Return ONLY 
 
     // Generate Captions
     async function generateCaptions() {
-      const user = localStorage.getItem('currentUser');
+      const user = currentFirebaseUser;
       if (!user) {
         alert('Please login to use this feature');
         openLoginModal();
@@ -1096,7 +1121,7 @@ Make them engaging, benefit-driven, and platform-specific. Format as JSON array 
 
     // Analyze Video
     async function analyzeVideo() {
-      const user = localStorage.getItem('currentUser');
+      const user = currentFirebaseUser;
       if (!user) {
         alert('Please login to use this feature');
         openLoginModal();
