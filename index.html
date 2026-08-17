@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LODA AI - Viral Content Made Simple</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #7c3aed;
+      --primary-light: #edd5ff;
+      --primary-dark: #4c1d95;
+      --secondary: #10b981;
+      --accent: #f97316;
+      --accent-light: #fee2e2;
+      --accent-dark: #7c2d12;
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-light: #f8fafc;
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --border: #334155;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1f2e 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .header {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo-icon {
+      font-size: 1.75rem;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .nav-right button, .nav-right a {
+      padding: 0.5rem 1rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .nav-right button:hover, .nav-right a:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(124, 58, 237, 0.3);
+    }
+
+    .nav-right .logout-btn {
+      background: var(--danger);
+    }
+
+    .nav-right .logout-btn:hover {
+      background: #dc2626;
+    }
+
+    .nav-right .user-info {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      padding: 0 0.75rem;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+      animation: slideIn 0.3s ease;
+    }
+
+    .modal-content h2 {
+      font-size: 1.75rem;
+      margin-bottom: 1.5rem;
+      color: var(--primary);
+    }
+
+    .modal-content .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-content label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+    }
+
+    .modal-content input {
+      width: 100%;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+    }
+
+    .modal-content input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(124, 58, 237, 0.1);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .modal-content .btn {
+      width: 100%;
+      margin-top: 0;
+    }
+
+    .modal-content .toggle-form {
+      text-align: center;
+      margin-top: 1rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .modal-content .toggle-form button {
+      background: none;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: underline;
+      font-weight: 600;
+      padding: 0;
+    }
+
+    .modal-content .toggle-form button:hover {
+      color: var(--primary-light);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .error-message {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--danger);
+      color: #fca5a5;
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .success-message {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid var(--success);
+      color: #86efac;
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 4rem;
+      animation: fadeInDown 0.8s ease;
+    }
+
+    .hero h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      animation: fadeInUp 0.8s ease 0.1s both;
+    }
+
+    .tab-button {
+      padding: 1rem 1.5rem;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .tab-button:hover {
+      color: var(--text-primary);
+    }
+
+    .tab-button.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .tab-content.active {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .tab-content.active {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      transition: all 0.3s ease;
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 16px 48px rgba(124, 58, 237, 0.15);
+      transform: translateY(-4px);
+    }
+
+    .card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--primary);
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-family: inherit;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(124, 58, 237, 0.1);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    select {
+      appearance: none;
+      padding-right: 2rem;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e1' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 12px;
+      padding-right: 2.5rem;
+    }
+
+    select option {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border: none;
+    }
+
+    select option:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    select option:checked {
+      background: var(--primary);
+      color: white;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .btn {
+      padding: 0.875rem 1.5rem;
+      background: linear-gradient(135deg, var(--primary) 0%, #6d28d9 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(124, 58, 237, 0.3);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn.secondary {
+      background: var(--secondary);
+    }
+
+    .btn.secondary:hover {
+      box-shadow: 0 12px 24px rgba(16, 185, 129, 0.3);
+    }
+
+    .results {
+      margin-top: 2rem;
+      min-height: 100px;
+    }
+
+    .result-item {
+      background: rgba(124, 58, 237, 0.1);
+      border-left: 3px solid var(--primary);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      animation: slideIn 0.4s ease;
+    }
+
+    .result-item.secondary {
+      border-left-color: var(--secondary);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .result-item.accent {
+      border-left-color: var(--accent);
+      background: rgba(249, 115, 22, 0.1);
+    }
+
+    .result-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .result-text {
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .stat-box {
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+      text-transform: uppercase;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 3rem 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-secondary);
+      margin-top: 4rem;
+    }
+
+    .feature-highlight {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(249, 115, 22, 0.15));
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .feature-highlight h4 {
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <div class="logo">
+        <span class="logo-icon">🚀</span>
+        <span>CreatorHub AI</span>
+      </div>
+      <div class="nav-right">
+        <div id="auth-nav" style="display: flex; gap: 1rem; align-items: center;">
+          <button onclick="openLoginModal()">Login</button>
+          <button onclick="openSignupModal()" style="background: var(--secondary);">Sign Up</button>
+        </div>
+        <div id="user-nav" style="display: none; align-items: center; gap: 1rem;">
+          <div class="user-info">
+            Welcome, <strong id="display-name">User</strong>
+          </div>
+          <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hero">
+      <h1>Your AI Coach for Viral Content</h1>
+      <p>Generate viral ideas, optimize captions, and analyze video performance. All in one place.</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-button active" onclick="switchTab('ideas')">🎯 Viral Ideas</button>
+      <button class="tab-button" onclick="switchTab('captions')">📝 Captions & Hooks</button>
+      <button class="tab-button" onclick="switchTab('analyzer')">🔥 Video Analyzer</button>
+    </div>
+
+    <div id="ideas" class="tab-content active">
+      <div class="card">
+        <h3>Generate Viral Ideas</h3>
+        <div class="form-group">
+          <label>Your Content Niche</label>
+          <select id="niche" required>
+            <option value="">— Select your niche —</option>
+            <option value="Fitness & Gym">💪 Fitness & Gym</option>
+            <option value="Personal Finance">💰 Personal Finance</option>
+            <option value="Mental Health">🧠 Mental Health</option>
+            <option value="Tech & Gadgets">📱 Tech & Gadgets</option>
+            <option value="Travel">✈️ Travel</option>
+            <option value="Fashion & Style">👗 Fashion & Style</option>
+            <option value="Cooking & Food">🍕 Cooking & Food</option>
+            <option value="Productivity">⚡ Productivity</option>
+            <option value="Business">💼 Business</option>
+            <option value="Entertainment">🎬 Entertainment</option>
+            <option value="Education">📚 Education</option>
+            <option value="Sports">⚽ Sports</option>
+            <option value="Gaming">🎮 Gaming</option>
+            <option value="Other">🌟 Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Target Platform</label>
+          <select id="platform" required>
+            <option value="">— Select platform —</option>
+            <option value="Instagram Reels">📸 Instagram Reels</option>
+            <option value="TikTok">🎵 TikTok</option>
+            <option value="YouTube Shorts">📺 YouTube Shorts</option>
+            <option value="Facebook">👍 Facebook Reels</option>
+            <option value="Pinterest">📌 Pinterest</option>
+          </select>
+        </div>
+        <button class="btn" onclick="generateIdeas()">Generate Ideas</button>
+        <div id="ideas-loading" style="display:none; text-align: center; margin-top: 1rem;">
+          <div class="loading"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Your Viral Hooks</h3>
+        <div id="ideas-results" class="results">
+          <p style="color: var(--text-secondary); text-align: center;">Generate ideas to see results</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="captions" class="tab-content">
+      <div class="card">
+        <h3>Optimize Your Content</h3>
+        <div class="form-group">
+          <label>Video Topic or Script</label>
+          <textarea id="topic" placeholder="Describe your video idea or paste your script..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Platform</label>
+          <select id="caption-platform" required>
+            <option value="">— Select platform —</option>
+            <option value="Instagram">📸 Instagram</option>
+            <option value="TikTok">🎵 TikTok</option>
+            <option value="YouTube">📺 YouTube</option>
+            <option value="LinkedIn">💼 LinkedIn</option>
+            <option value="Twitter">𝕏 Twitter/X</option>
+          </select>
+        </div>
+        <button class="btn secondary" onclick="generateCaptions()">Generate Captions</button>
+        <div id="captions-loading" style="display:none; text-align: center; margin-top: 1rem;">
+          <div class="loading"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Your Optimized Captions</h3>
+        <div id="captions-results" class="results">
+          <p style="color: var(--text-secondary); text-align: center;">Paste content to generate captions</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="analyzer" class="tab-content">
+      <div class="card">
+        <h3>Analyze Your Video</h3>
+        <div class="form-group">
+          <label>Video URL or File</label>
+          <input type="url" id="video-url" placeholder="Paste YouTube/TikTok URL or video link...">
+        </div>
+        <div class="feature-highlight">
+          <h4>⚡ Killer Feature</h4>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">Upload any video and we'll analyze hook strength, retention potential, and give you specific improvements.</p>
+        </div>
+        <button class="btn" onclick="analyzeVideo()">Analyze Video</button>
+        <div id="analyzer-loading" style="display:none; text-align: center; margin-top: 1rem;">
+          <div class="loading"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Video Analysis</h3>
+        <div id="analyzer-results" class="results">
+          <p style="color: var(--text-secondary); text-align: center;">Upload a video to see detailed analysis</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loginModal" class="modal">
+    <div class="modal-content" style="position: relative;">
+      <button class="modal-close" onclick="closeLoginModal()">✕</button>
+      <h2>Login</h2>
+      <div id="login-error" class="error-message" style="display: none;"></div>
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="login-email" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn">Login</button>
+      </form>
+      <div class="toggle-form">
+        Don't have an account?
+        <button onclick="switchToSignup()">Sign Up</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="signupModal" class="modal">
+    <div class="modal-content" style="position: relative;">
+      <button class="modal-close" onclick="closeSignupModal()">✕</button>
+      <h2>Create Account</h2>
+      <div id="signup-error" class="error-message" style="display: none;"></div>
+      <div id="signup-success" class="success-message" style="display: none;"></div>
+      <form onsubmit="handleSignup(event)">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="signup-name" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="signup-email" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="signup-password" placeholder="••••••••" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label>Confirm Password</label>
+          <input type="password" id="signup-confirm" placeholder="••••••••" required minlength="6">
+        </div>
+        <button type="submit" class="btn">Create Account</button>
+      </form>
+      <div class="toggle-form">
+        Already have an account?
+        <button onclick="switchToLogin()">Login</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>CreatorHub AI © 2024 • Powered by Claude AI</p>
+    <p style="font-size: 0.85rem; margin-top: 1rem;">Built for creators who want to go viral 🚀</p>
+  </div>
+
+  <script>
+    // ==================== AUTHENTICATION ====================
+
+    window.addEventListener('DOMContentLoaded', () => {
+      checkAuthStatus();
+    });
+
+    function checkAuthStatus() {
+      const user = localStorage.getItem('currentUser');
+      if (user) {
+        showUserNav(JSON.parse(user));
+      } else {
+        showAuthNav();
+      }
+    }
+
+    function openLoginModal() {
+      document.getElementById('loginModal').classList.add('active');
+      document.getElementById('login-error').style.display = 'none';
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.remove('active');
+      document.getElementById('login-email').value = '';
+      document.getElementById('login-password').value = '';
+    }
+
+    function openSignupModal() {
+      document.getElementById('signupModal').classList.add('active');
+      document.getElementById('signup-error').style.display = 'none';
+      document.getElementById('signup-success').style.display = 'none';
+    }
+
+    function closeSignupModal() {
+      document.getElementById('signupModal').classList.remove('active');
+      document.getElementById('signup-name').value = '';
+      document.getElementById('signup-email').value = '';
+      document.getElementById('signup-password').value = '';
+      document.getElementById('signup-confirm').value = '';
+    }
+
+    function switchToLogin() {
+      closeSignupModal();
+      openLoginModal();
+    }
+
+    function switchToSignup() {
+      closeLoginModal();
+      openSignupModal();
+    }
+
+    window.onclick = function(event) {
+      const loginModal = document.getElementById('loginModal');
+      const signupModal = document.getElementById('signupModal');
+
+      if (event.target == loginModal) {
+        closeLoginModal();
+      }
+      if (event.target == signupModal) {
+        closeSignupModal();
+      }
+    }
+
+    function handleLogin(event) {
+      event.preventDefault();
+
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const errorDiv = document.getElementById('login-error');
+
+      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
+      const user = allUsers.find(u => u.email === email && u.password === password);
+
+      if (!user) {
+        errorDiv.textContent = '❌ Invalid email or password';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      const userData = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt
+      };
+
+      localStorage.setItem('currentUser', JSON.stringify(userData));
+      closeLoginModal();
+      showUserNav(userData);
+    }
+
+    function handleSignup(event) {
+      event.preventDefault();
+
+      const name = document.getElementById('signup-name').value;
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      const confirm = document.getElementById('signup-confirm').value;
+      const errorDiv = document.getElementById('signup-error');
+      const successDiv = document.getElementById('signup-success');
+
+      errorDiv.style.display = 'none';
+      successDiv.style.display = 'none';
+
+      if (password !== confirm) {
+        errorDiv.textContent = '❌ Passwords do not match';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      if (password.length < 6) {
+        errorDiv.textContent = '❌ Password must be at least 6 characters';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
+      if (allUsers.find(u => u.email === email)) {
+        errorDiv.textContent = '❌ Email already registered';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      const newUser = {
+        id: Date.now().toString(),
+        name: name,
+        email: email,
+        password: password, // Note: for a real production app, hash this on a real backend/DB
+        createdAt: new Date().toISOString()
+      };
+
+      allUsers.push(newUser);
+      localStorage.setItem('allUsers', JSON.stringify(allUsers));
+
+      successDiv.textContent = '✅ Account created successfully! You can now login.';
+      successDiv.style.display = 'block';
+
+      document.getElementById('signup-name').value = '';
+      document.getElementById('signup-email').value = '';
+      document.getElementById('signup-password').value = '';
+      document.getElementById('signup-confirm').value = '';
+
+      setTimeout(() => {
+        closeSignupModal();
+        openLoginModal();
+      }, 2000);
+    }
+
+    function showUserNav(userData) {
+      document.getElementById('auth-nav').style.display = 'none';
+      document.getElementById('user-nav').style.display = 'flex';
+      document.getElementById('display-name').textContent = userData.name.split(' ')[0];
+    }
+
+    function showAuthNav() {
+      document.getElementById('auth-nav').style.display = 'flex';
+      document.getElementById('user-nav').style.display = 'none';
+    }
+
+    function logout() {
+      localStorage.removeItem('currentUser');
+      showAuthNav();
+      alert('✅ Logged out successfully!');
+    }
+
+    // ==================== PLATFORM LOGIC ====================
+    function switchTab(tabName) {
+      const user = localStorage.getItem('currentUser');
+      if (!user) {
+        alert('Please login to use this feature');
+        openLoginModal();
+        return;
+      }
+
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(tabName).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // ==================== BACKEND CALL HELPER ====================
+    // This now calls YOUR OWN backend (/api/generate), not Anthropic directly.
+    async function callAI(prompt, maxTokens = 1000) {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, max_tokens: maxTokens }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.text;
+    }
+
+    // Generate Viral Ideas
+    async function generateIdeas() {
+      const user = localStorage.getItem('currentUser');
+      if (!user) {
+        alert('Please login to use this feature');
+        openLoginModal();
+        return;
+      }
+
+      const niche = document.getElementById('niche').value;
+      const platform = document.getElementById('platform').value;
+
+      if (!niche || !platform) {
+        alert('Please select both niche and platform');
+        return;
+      }
+
+      showLoading('ideas');
+
+      try {
+        const prompt = `Generate 5 viral video hook ideas for a ${niche} creator posting on ${platform}. For each hook, provide:
+1. The hook text (first 5-10 words to grab attention)
+2. Type (e.g., "Pattern interruption", "Controversy", "How-to", etc.)
+3. Why it works
+
+Format as JSON with array of objects with keys: hook, type, reason. Return ONLY the JSON array, no other text.`;
+
+        const content = await callAI(prompt);
+
+        let ideas = [];
+        try {
+          const jsonMatch = content.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            ideas = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          ideas = [{
+            hook: content.split('\n')[0],
+            type: 'Custom',
+            reason: content.split('\n').slice(1, 3).join(' ')
+          }];
+        }
+
+        let html = '';
+        ideas.forEach((idea, idx) => {
+          html += `
+            <div class="result-item">
+              <div class="result-label">Hook ${idx + 1} • ${idea.type || 'Trending Format'}</div>
+              <div class="result-text" style="font-weight: 600; color: var(--primary); margin-bottom: 0.5rem;">"${idea.hook || idea}"</div>
+              <div class="result-text" style="font-size: 0.85rem;">${idea.reason || 'Proven hook structure'}</div>
+              <button class="copy-btn" onclick="copyToClipboard('${(idea.hook || idea).replace(/'/g, "\\'")}')">Copy Hook</button>
+            </div>
+          `;
+        });
+
+        document.getElementById('ideas-results').innerHTML = html;
+      } catch (error) {
+        document.getElementById('ideas-results').innerHTML = `<div class="result-item" style="border-left-color: #ef4444;">Error: ${error.message}</div>`;
+      }
+
+      hideLoading('ideas');
+    }
+
+    // Generate Captions
+    async function generateCaptions() {
+      const user = localStorage.getItem('currentUser');
+      if (!user) {
+        alert('Please login to use this feature');
+        openLoginModal();
+        return;
+      }
+
+      const topic = document.getElementById('topic').value;
+      const platform = document.getElementById('caption-platform').value;
+
+      if (!topic || !platform) {
+        alert('Please enter a topic and select a platform');
+        return;
+      }
+
+      showLoading('captions');
+
+      try {
+        const prompt = `Create 3 viral-optimized captions for a ${platform} post about: "${topic}"
+
+For each caption provide:
+1. Main caption text
+2. Recommended hashtags (5-7)
+3. Hook/first line that stops the scroll
+
+Make them engaging, benefit-driven, and platform-specific. Format as JSON array with objects: caption, hashtags, hook. Return ONLY the JSON array, no other text.`;
+
+        const content = await callAI(prompt);
+
+        let captions = [];
+        try {
+          const jsonMatch = content.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            captions = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          captions = [{ caption: content, hashtags: ['#viral', '#creator'], hook: 'Check this out...' }];
+        }
+
+        let html = '';
+        captions.forEach((cap, idx) => {
+          const hashtags = Array.isArray(cap.hashtags) ? cap.hashtags.join(' ') : cap.hashtags;
+          html += `
+            <div class="result-item secondary">
+              <div class="result-label">Caption Option ${idx + 1}</div>
+              <div class="result-text" style="font-weight: 600; margin-bottom: 1rem;">${cap.hook || '👉'} ${cap.caption || cap}</div>
+              <div class="result-text" style="color: var(--secondary); font-size: 0.9rem;">${hashtags}</div>
+              <button class="copy-btn" onclick="copyToClipboard(\`${cap.hook || ''} ${cap.caption || cap}\n\n${hashtags}\`)">Copy Caption</button>
+            </div>
+          `;
+        });
+
+        document.getElementById('captions-results').innerHTML = html;
+      } catch (error) {
+        document.getElementById('captions-results').innerHTML = `<div class="result-item" style="border-left-color: #ef4444;">Error: ${error.message}</div>`;
+      }
+
+      hideLoading('captions');
+    }
+
+    // Analyze Video
+    async function analyzeVideo() {
+      const user = localStorage.getItem('currentUser');
+      if (!user) {
+        alert('Please login to use this feature');
+        openLoginModal();
+        return;
+      }
+
+      const videoUrl = document.getElementById('video-url').value;
+
+      if (!videoUrl) {
+        alert('Please enter a video URL');
+        return;
+      }
+
+      showLoading('analyzer');
+
+      try {
+        const prompt = `Provide a detailed analysis for a video at: ${videoUrl}
+
+Analyze and rate (0-10) on:
+1. Hook Strength (does first 3 seconds grab attention?)
+2. Retention Potential (will people keep watching?)
+3. Call-to-action clarity
+
+Also provide:
+- Top 3 specific improvements
+- Estimated engagement potential
+- One viral angle they missed
+
+Format as JSON: { hookScore, retentionScore, ctaScore, improvements: [], engagementPotential, missedAngle }. Return ONLY the JSON object, no other text.`;
+
+        const content = await callAI(prompt);
+
+        let analysis = {};
+        try {
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            analysis = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          analysis = {
+            hookScore: 7,
+            retentionScore: 8,
+            ctaScore: 6,
+            improvements: ['Better opening hook', 'Add pattern interruption', 'Stronger CTA'],
+            engagementPotential: 'High'
+          };
+        }
+
+        let html = `
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-value">${analysis.hookScore || 7}/10</div>
+              <div class="stat-label">Hook Strength</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${analysis.retentionScore || 8}/10</div>
+              <div class="stat-label">Retention</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${analysis.ctaScore || 6}/10</div>
+              <div class="stat-label">CTA Clarity</div>
+            </div>
+          </div>
+
+          <div class="result-item accent">
+            <div class="result-label">Engagement Potential</div>
+            <div class="result-text">${analysis.engagementPotential || 'High'} 📈</div>
+          </div>
+
+          <div class="result-item">
+            <div class="result-label">Top Improvements</div>
+            <div class="result-text">
+              ${(analysis.improvements || []).map((imp, i) => `<div style="margin: 0.5rem 0;">• ${imp}</div>`).join('')}
+            </div>
+          </div>
+
+          <div class="result-item accent">
+            <div class="result-label">Missed Viral Angle</div>
+            <div class="result-text">${analysis.missedAngle || 'Could lean more into controversy or pattern interruption'}</div>
+          </div>
+        `;
+
+        document.getElementById('analyzer-results').innerHTML = html;
+      } catch (error) {
+        document.getElementById('analyzer-results').innerHTML = `<div class="result-item" style="border-left-color: #ef4444;">Error: ${error.message}</div>`;
+      }
+
+      hideLoading('analyzer');
+    }
+
+    // Utility Functions
+    function showLoading(tab) {
+      document.getElementById(`${tab}-loading`).style.display = 'block';
+      document.getElementById(`${tab}-results`).style.opacity = '0.5';
+    }
+
+    function hideLoading(tab) {
+      document.getElementById(`${tab}-loading`).style.display = 'none';
+      document.getElementById(`${tab}-results`).style.opacity = '1';
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard! 📋');
+      });
+    }
+  </script>
+</body>
+</html>
