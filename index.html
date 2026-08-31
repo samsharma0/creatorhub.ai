@@ -745,14 +745,40 @@
     <div id="analyzer" class="tab-content">
       <div class="card">
         <h3>Analyze Your Video</h3>
-        <div class="form-group">
-          <label>Video URL or File</label>
-          <input type="url" id="video-url" placeholder="Paste YouTube/TikTok URL or video link...">
+
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+          <button type="button" id="mode-btn-file" class="btn" style="margin-top:0; width:auto; flex:1; padding: 0.6rem;" onclick="setAnalyzerMode('file')">📁 Upload File</button>
+          <button type="button" id="mode-btn-link" class="btn secondary" style="margin-top:0; width:auto; flex:1; padding: 0.6rem;" onclick="setAnalyzerMode('link')">🔗 Paste Link</button>
         </div>
-        <div class="feature-highlight">
-          <h4>⚡ Killer Feature</h4>
-          <p style="font-size: 0.85rem; color: var(--text-secondary);">Upload any video and we'll analyze hook strength, retention potential, and give you specific improvements.</p>
+
+        <div id="analyzer-mode-file">
+          <div class="form-group">
+            <label>Upload Video File</label>
+            <input type="file" id="video-file" accept="video/mp4,video/quicktime,video/webm" style="padding: 0.6rem;">
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">
+              Max size: ~4 MB. For best results, upload just the first 10–15 seconds (the hook) if your video is longer.
+            </p>
+          </div>
+          <div id="video-preview" style="display:none; margin-bottom: 1rem;">
+            <video id="video-preview-player" controls style="width: 100%; border-radius: 8px; max-height: 200px;"></video>
+          </div>
+          <div class="feature-highlight">
+            <h4>⚡ Killer Feature</h4>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">Upload your video and Gemini will actually watch it — analyzing hook strength, pacing, visuals, and retention potential.</p>
+          </div>
         </div>
+
+        <div id="analyzer-mode-link" style="display:none;">
+          <div class="form-group">
+            <label>Reel / Short / Video Link</label>
+            <input type="url" id="video-link" placeholder="Paste your Instagram Reel, YouTube Short, or TikTok link...">
+          </div>
+          <div class="feature-highlight">
+            <h4>ℹ️ Please Note</h4>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">We can't access private platform video files directly from a link, so this gives general best-practice guidance based on the platform and context you provide — not a frame-by-frame analysis. For a real analysis of your actual footage, use "Upload File" instead.</p>
+          </div>
+        </div>
+
         <button class="btn" onclick="analyzeVideo()">Analyze Video</button>
         <div id="analyzer-loading" style="display:none; text-align: center; margin-top: 1rem;">
           <div class="loading"></div>
@@ -762,7 +788,7 @@
       <div class="card">
         <h3>Video Analysis</h3>
         <div id="analyzer-results" class="results">
-          <p style="color: var(--text-secondary); text-align: center;">Upload a video to see detailed analysis</p>
+          <p style="color: var(--text-secondary); text-align: center;">Upload a video or paste a link to see analysis</p>
         </div>
       </div>
     </div>
@@ -1041,6 +1067,23 @@
       return data.text;
     }
 
+    // Sends a prompt + base64-encoded video to the backend for real video analysis
+    async function callAIWithVideo(prompt, base64Video, mimeType) {
+      const response = await fetch('/api/analyze-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, video: base64Video, mimeType }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.text;
+    }
+
     // ==================== HISTORY (Firestore) ====================
 
     async function saveToHistory(type, title, resultHtml) {
@@ -1248,6 +1291,59 @@ Make them engaging, benefit-driven, and platform-specific. Format as JSON array 
       hideLoading('captions');
     }
 
+    // Toggle between "Upload File" and "Paste Link" modes
+    let analyzerMode = 'file';
+    function setAnalyzerMode(mode) {
+      analyzerMode = mode;
+      const fileSection = document.getElementById('analyzer-mode-file');
+      const linkSection = document.getElementById('analyzer-mode-link');
+      const btnFile = document.getElementById('mode-btn-file');
+      const btnLink = document.getElementById('mode-btn-link');
+
+      if (mode === 'file') {
+        fileSection.style.display = 'block';
+        linkSection.style.display = 'none';
+        btnFile.classList.remove('secondary');
+        btnLink.classList.add('secondary');
+      } else {
+        fileSection.style.display = 'none';
+        linkSection.style.display = 'block';
+        btnFile.classList.add('secondary');
+        btnLink.classList.remove('secondary');
+      }
+    }
+
+    // Preview selected video file
+    document.addEventListener('DOMContentLoaded', () => {
+      const fileInput = document.getElementById('video-file');
+      if (fileInput) {
+        fileInput.addEventListener('change', () => {
+          const file = fileInput.files[0];
+          const preview = document.getElementById('video-preview');
+          const player = document.getElementById('video-preview-player');
+          if (file) {
+            player.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+          } else {
+            preview.style.display = 'none';
+          }
+        });
+      }
+    });
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          // result looks like "data:video/mp4;base64,AAAA..."
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
     // Analyze Video
     async function analyzeVideo() {
       const user = currentFirebaseUser;
@@ -1257,32 +1353,87 @@ Make them engaging, benefit-driven, and platform-specific. Format as JSON array 
         return;
       }
 
-      const videoUrl = document.getElementById('video-url').value;
+      let content;
+      let historyLabel;
 
-      if (!videoUrl) {
-        alert('Please enter a video URL');
-        return;
-      }
+      if (analyzerMode === 'file') {
+        const fileInput = document.getElementById('video-file');
+        const file = fileInput.files[0];
 
-      showLoading('analyzer');
+        if (!file) {
+          alert('Please upload a video file');
+          return;
+        }
 
-      try {
-        const prompt = `Provide a detailed analysis for a video at: ${videoUrl}
+        const maxBytes = 4 * 1024 * 1024; // ~4 MB safety limit for serverless request size
+        if (file.size > maxBytes) {
+          alert('This video is too large (max ~4 MB). Please trim it to just the first 10-15 seconds, or compress it, and try again.');
+          return;
+        }
 
-Analyze and rate (0-10) on:
-1. Hook Strength (does first 3 seconds grab attention?)
-2. Retention Potential (will people keep watching?)
+        showLoading('analyzer');
+
+        try {
+          const base64Video = await fileToBase64(file);
+
+          const prompt = `You are analyzing a real short-form video (attached) for a content creator.
+
+Watch the video and rate (0-10) on:
+1. Hook Strength (does the first 3 seconds grab attention?)
+2. Retention Potential (will people keep watching to the end?)
 3. Call-to-action clarity
 
 Also provide:
-- Top 3 specific improvements
-- Estimated engagement potential
-- One viral angle they missed
+- Top 3 specific, concrete improvements based on what you actually see/hear in the video
+- Estimated engagement potential (Low / Medium / High)
+- One viral angle they missed, based on the actual content
 
 Format as JSON: { hookScore, retentionScore, ctaScore, improvements: [], engagementPotential, missedAngle }. Return ONLY the JSON object, no other text.`;
 
-        const content = await callAI(prompt);
+          content = await callAIWithVideo(prompt, base64Video, file.type);
+          historyLabel = file.name;
+        } catch (error) {
+          document.getElementById('analyzer-results').innerHTML = `<div class="result-item" style="border-left-color: #ef4444;">Error: ${error.message}</div>`;
+          hideLoading('analyzer');
+          return;
+        }
+      } else {
+        // Link mode
+        const link = document.getElementById('video-link').value;
+        if (!link) {
+          alert('Please paste a video link');
+          return;
+        }
 
+        showLoading('analyzer');
+
+        try {
+          const prompt = `A content creator shared this video link for feedback: ${link}
+
+We cannot access the actual video file from this link, so give general best-practice guidance based on the platform (infer it from the URL, e.g. Instagram Reels, YouTube Shorts, TikTok) and typical short-form content strategy.
+
+Rate on a reasonable estimated scale (0-10) based on general platform best practices:
+1. Hook Strength importance for this platform
+2. Retention Potential factors
+3. Call-to-action clarity tips
+
+Also provide:
+- Top 3 general improvements creators on this platform should focus on
+- General engagement potential guidance (Low / Medium / High framing)
+- One commonly missed viral angle for this type of platform content
+
+Format as JSON: { hookScore, retentionScore, ctaScore, improvements: [], engagementPotential, missedAngle }. Return ONLY the JSON object, no other text.`;
+
+          content = await callAI(prompt);
+          historyLabel = link.slice(0, 50);
+        } catch (error) {
+          document.getElementById('analyzer-results').innerHTML = `<div class="result-item" style="border-left-color: #ef4444;">Error: ${error.message}</div>`;
+          hideLoading('analyzer');
+          return;
+        }
+      }
+
+      try {
         let analysis = {};
         try {
           const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -1299,7 +1450,14 @@ Format as JSON: { hookScore, retentionScore, ctaScore, improvements: [], engagem
           };
         }
 
+        const noteBanner = analyzerMode === 'link'
+          ? `<div class="result-item" style="border-left-color: #f97316; background: rgba(249, 115, 22, 0.08);">
+               <div class="result-text" style="font-size: 0.85rem;">ℹ️ This is general guidance based on the link/platform, not a frame-by-frame analysis of your actual footage. Upload the file directly for a real analysis.</div>
+             </div>`
+          : '';
+
         let html = `
+          ${noteBanner}
           <div class="stats-grid">
             <div class="stat-box">
               <div class="stat-value">${analysis.hookScore || 7}/10</div>
@@ -1334,7 +1492,7 @@ Format as JSON: { hookScore, retentionScore, ctaScore, improvements: [], engagem
         `;
 
         document.getElementById('analyzer-results').innerHTML = html;
-        saveToHistory('analyzer', videoUrl.slice(0, 50), html);
+        saveToHistory('analyzer', historyLabel, html);
       } catch (error) {
         document.getElementById('analyzer-results').innerHTML = `<div class="result-item" style="border-left-color: #ef4444;">Error: ${error.message}</div>`;
       }
