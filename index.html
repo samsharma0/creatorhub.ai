@@ -771,11 +771,58 @@
         <div id="analyzer-mode-link" style="display:none;">
           <div class="form-group">
             <label>Reel / Short / Video Link</label>
-            <input type="url" id="video-link" placeholder="Paste your Instagram Reel, YouTube Short, or TikTok link...">
+            <input type="url" id="video-link" placeholder="Paste your Instagram Reel, YouTube Short, or TikTok link..." oninput="onVideoLinkChange()">
           </div>
+
+          <!-- YouTube: auto-fetched stats appear here -->
+          <div id="youtube-stats-box" style="display:none; margin-bottom: 1rem;">
+            <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+              <div class="stat-box">
+                <div class="stat-value" id="yt-stat-views">-</div>
+                <div class="stat-label">Views</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="yt-stat-likes">-</div>
+                <div class="stat-label">Likes</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="yt-stat-comments">-</div>
+                <div class="stat-label">Comments</div>
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--secondary); text-align: center; margin-top: 0.5rem;">✅ Real stats fetched from YouTube</p>
+          </div>
+          <div id="youtube-stats-loading" style="display:none; text-align: center; margin-bottom: 1rem;">
+            <div class="loading"></div>
+          </div>
+          <div id="youtube-stats-error" style="display:none; margin-bottom: 1rem;"></div>
+
+          <!-- Instagram/TikTok/other: manual entry -->
+          <div id="manual-stats-box" style="display:none; margin-bottom: 1rem;">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">We can't auto-fetch stats from this platform. Enter the numbers from your app for a more realistic analysis (optional but recommended):</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label style="font-size: 0.8rem;">Views</label>
+                <input type="number" id="manual-views" placeholder="e.g. 12000" min="0">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label style="font-size: 0.8rem;">Likes</label>
+                <input type="number" id="manual-likes" placeholder="e.g. 850" min="0">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label style="font-size: 0.8rem;">Comments</label>
+                <input type="number" id="manual-comments" placeholder="e.g. 45" min="0">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label style="font-size: 0.8rem;">Shares</label>
+                <input type="number" id="manual-shares" placeholder="e.g. 20" min="0">
+              </div>
+            </div>
+          </div>
+
           <div class="feature-highlight">
             <h4>ℹ️ Please Note</h4>
-            <p style="font-size: 0.85rem; color: var(--text-secondary);">We can't access private platform video files directly from a link, so this gives general best-practice guidance based on the platform and context you provide — not a frame-by-frame analysis. For a real analysis of your actual footage, use "Upload File" instead.</p>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">We can't access the actual video frames from a link, so this gives best-practice guidance based on the platform, context, and any stats provided — not a frame-by-frame analysis. For a real analysis of your actual footage, use "Upload File" instead.</p>
           </div>
         </div>
 
@@ -1344,6 +1391,81 @@ Make them engaging, benefit-driven, and platform-specific. Format as JSON array 
       });
     }
 
+    // ==================== LINK MODE: platform detection + stats ====================
+
+    let fetchedYouTubeStats = null; // holds real stats once fetched
+    let linkDebounceTimer = null;
+
+    function detectPlatform(url) {
+      if (!url) return null;
+      const lower = url.toLowerCase();
+      if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
+      if (lower.includes('instagram.com')) return 'instagram';
+      if (lower.includes('tiktok.com')) return 'tiktok';
+      return 'other';
+    }
+
+    function onVideoLinkChange() {
+      clearTimeout(linkDebounceTimer);
+      fetchedYouTubeStats = null;
+
+      const link = document.getElementById('video-link').value.trim();
+      const ytBox = document.getElementById('youtube-stats-box');
+      const ytLoading = document.getElementById('youtube-stats-loading');
+      const ytError = document.getElementById('youtube-stats-error');
+      const manualBox = document.getElementById('manual-stats-box');
+
+      ytBox.style.display = 'none';
+      ytLoading.style.display = 'none';
+      ytError.style.display = 'none';
+      manualBox.style.display = 'none';
+
+      if (!link) return;
+
+      const platform = detectPlatform(link);
+
+      if (platform === 'youtube') {
+        // debounce so we don't fetch on every keystroke
+        linkDebounceTimer = setTimeout(() => fetchYouTubeStats(link), 600);
+      } else if (platform === 'instagram' || platform === 'tiktok' || platform === 'other') {
+        manualBox.style.display = 'block';
+      }
+    }
+
+    async function fetchYouTubeStats(link) {
+      const ytBox = document.getElementById('youtube-stats-box');
+      const ytLoading = document.getElementById('youtube-stats-loading');
+      const ytError = document.getElementById('youtube-stats-error');
+
+      ytLoading.style.display = 'block';
+      ytError.style.display = 'none';
+      ytBox.style.display = 'none';
+
+      try {
+        const response = await fetch('/api/youtube-stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: link }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Could not fetch YouTube stats');
+        }
+
+        fetchedYouTubeStats = data;
+        document.getElementById('yt-stat-views').textContent = Number(data.views).toLocaleString();
+        document.getElementById('yt-stat-likes').textContent = isNaN(Number(data.likes)) ? data.likes : Number(data.likes).toLocaleString();
+        document.getElementById('yt-stat-comments').textContent = Number(data.comments).toLocaleString();
+        ytBox.style.display = 'block';
+      } catch (err) {
+        ytError.innerHTML = `<div class="result-item" style="border-left-color: #ef4444; margin-bottom:0;"><div class="result-text" style="font-size:0.85rem;">Could not fetch stats: ${err.message}</div></div>`;
+        ytError.style.display = 'block';
+      }
+
+      ytLoading.style.display = 'none';
+    }
+
     // Analyze Video
     async function analyzeVideo() {
       const user = currentFirebaseUser;
@@ -1407,19 +1529,63 @@ Format as JSON: { hookScore, retentionScore, ctaScore, improvements: [], engagem
 
         showLoading('analyzer');
 
+        // Build a stats block from whatever data we have (YouTube auto-fetch or manual entry)
+        let statsBlock = '';
+        let statsForDisplay = null;
+
+        if (fetchedYouTubeStats) {
+          statsForDisplay = {
+            views: fetchedYouTubeStats.views,
+            likes: fetchedYouTubeStats.likes,
+            comments: fetchedYouTubeStats.comments,
+            shares: null,
+            source: 'YouTube (real, auto-fetched)'
+          };
+          statsBlock = `\n\nReal performance data for this video (fetched from YouTube):
+- Title: ${fetchedYouTubeStats.title}
+- Channel: ${fetchedYouTubeStats.channelTitle}
+- Views: ${fetchedYouTubeStats.views}
+- Likes: ${fetchedYouTubeStats.likes}
+- Comments: ${fetchedYouTubeStats.comments}
+
+Use these real numbers to ground your analysis — for example, comment on the like-to-view ratio or comment-to-view ratio if notable.`;
+        } else {
+          const mViews = document.getElementById('manual-views')?.value;
+          const mLikes = document.getElementById('manual-likes')?.value;
+          const mComments = document.getElementById('manual-comments')?.value;
+          const mShares = document.getElementById('manual-shares')?.value;
+
+          if (mViews || mLikes || mComments || mShares) {
+            statsForDisplay = {
+              views: mViews || null,
+              likes: mLikes || null,
+              comments: mComments || null,
+              shares: mShares || null,
+              source: 'Entered manually by creator'
+            };
+            statsBlock = `\n\nThe creator provided these performance numbers from the platform app:
+${mViews ? `- Views: ${mViews}` : ''}
+${mLikes ? `- Likes: ${mLikes}` : ''}
+${mComments ? `- Comments: ${mComments}` : ''}
+${mShares ? `- Shares: ${mShares}` : ''}
+
+Use these real numbers to ground your analysis — for example, comment on the like-to-view ratio or share rate if notable.`;
+          }
+        }
+
         try {
           const prompt = `A content creator shared this video link for feedback: ${link}
 
-We cannot access the actual video file from this link, so give general best-practice guidance based on the platform (infer it from the URL, e.g. Instagram Reels, YouTube Shorts, TikTok) and typical short-form content strategy.
+We cannot access the actual video file from this link, so give best-practice guidance based on the platform (infer it from the URL, e.g. Instagram Reels, YouTube Shorts, TikTok) and typical short-form content strategy.${statsBlock}
 
-Rate on a reasonable estimated scale (0-10) based on general platform best practices:
+Rate on a reasonable scale (0-10) based on platform best practices${statsForDisplay ? ' and the real performance data provided above' : ''}:
 1. Hook Strength importance for this platform
 2. Retention Potential factors
 3. Call-to-action clarity tips
 
 Also provide:
 - Top 3 general improvements creators on this platform should focus on
-- General engagement potential guidance (Low / Medium / High framing)
+- Engagement potential guidance (Low / Medium / High)${statsForDisplay ? ', informed by the real numbers above' : ''}
 - One commonly missed viral angle for this type of platform content
 
 Format as JSON: { hookScore, retentionScore, ctaScore, improvements: [], engagementPotential, missedAngle }. Return ONLY the JSON object, no other text.`;
@@ -1431,6 +1597,9 @@ Format as JSON: { hookScore, retentionScore, ctaScore, improvements: [], engagem
           hideLoading('analyzer');
           return;
         }
+
+        // stash for use when building the results HTML below
+        window.__lastStatsForDisplay = statsForDisplay;
       }
 
       try {
@@ -1452,12 +1621,27 @@ Format as JSON: { hookScore, retentionScore, ctaScore, improvements: [], engagem
 
         const noteBanner = analyzerMode === 'link'
           ? `<div class="result-item" style="border-left-color: #f97316; background: rgba(249, 115, 22, 0.08);">
-               <div class="result-text" style="font-size: 0.85rem;">ℹ️ This is general guidance based on the link/platform, not a frame-by-frame analysis of your actual footage. Upload the file directly for a real analysis.</div>
+               <div class="result-text" style="font-size: 0.85rem;">ℹ️ This is guidance based on the link/platform${window.__lastStatsForDisplay ? ' and the performance data below' : ''}, not a frame-by-frame analysis of your actual footage. Upload the file directly for a real analysis.</div>
              </div>`
           : '';
 
+        const stats = window.__lastStatsForDisplay;
+        const realStatsBanner = stats
+          ? `<div class="result-item secondary">
+               <div class="result-label">📊 Performance Data • ${stats.source}</div>
+               <div class="stats-grid" style="grid-template-columns: repeat(${[stats.views, stats.likes, stats.comments, stats.shares].filter(Boolean).length || 1}, 1fr); margin: 0.5rem 0 0 0;">
+                 ${stats.views ? `<div class="stat-box"><div class="stat-value">${Number(stats.views).toLocaleString()}</div><div class="stat-label">Views</div></div>` : ''}
+                 ${stats.likes ? `<div class="stat-box"><div class="stat-value">${isNaN(Number(stats.likes)) ? stats.likes : Number(stats.likes).toLocaleString()}</div><div class="stat-label">Likes</div></div>` : ''}
+                 ${stats.comments ? `<div class="stat-box"><div class="stat-value">${Number(stats.comments).toLocaleString()}</div><div class="stat-label">Comments</div></div>` : ''}
+                 ${stats.shares ? `<div class="stat-box"><div class="stat-value">${Number(stats.shares).toLocaleString()}</div><div class="stat-label">Shares</div></div>` : ''}
+               </div>
+             </div>`
+          : '';
+        window.__lastStatsForDisplay = null; // reset after use
+
         let html = `
           ${noteBanner}
+          ${realStatsBanner}
           <div class="stats-grid">
             <div class="stat-box">
               <div class="stat-value">${analysis.hookScore || 7}/10</div>
